@@ -1,5 +1,6 @@
 package com.lgf.loadingrrefeshlayout;
 
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -17,6 +18,7 @@ public class MainActivity extends AppCompatActivity {
     private LoadingRefreshLayout mLoadingRefreshLayout;
     private RecyclerView mDataRecyclerView = null;
     private String[] dataStringArr;
+    private LoadMoreAdapterWrapper loadMoreAdapterWrapper;
     private MyRecyclerViewAdapter mRecyclerViewAdapter;
     private int count = 0;
 
@@ -35,17 +37,42 @@ public class MainActivity extends AppCompatActivity {
             public void onRefresh() {
                 refreshData();
                 mLoadingRefreshLayout.finishLoading();
-                mRecyclerViewAdapter.notifyDataSetChanged();
+                loadMoreAdapterWrapper.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onLoadMore() {
+
             }
         });
         mDataRecyclerView = (RecyclerView) findViewById(R.id.rv_data_list);
         mDataRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mRecyclerViewAdapter = new MyRecyclerViewAdapter();
-        mDataRecyclerView.setAdapter(mRecyclerViewAdapter);
+        loadMoreAdapterWrapper = new LoadMoreAdapterWrapper(this, mRecyclerViewAdapter);
+        loadMoreAdapterWrapper.setOnLoadMoreListener(onLoadMoreListener);
+        mDataRecyclerView.setAdapter(loadMoreAdapterWrapper);
     }
 
+    LoadMoreAdapterWrapper.OnLoadMoreListener onLoadMoreListener = new LoadMoreAdapterWrapper.OnLoadMoreListener() {
+        @Override
+        public void onLoadMore() {
+            mDataRecyclerView.scrollToPosition(loadMoreAdapterWrapper.getItemCount() -1);
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    loadMoreAdapterWrapper.disableLoadMoreView();
+                }
+            }, 5000);
+        }
+
+        @Override
+        public void onRetry() {
+
+        }
+    };
+
     private void initData(){
-        dataStringArr = new String[10];
+        dataStringArr = new String[30];
         for (int i = 0; i < dataStringArr.length; i++){
             dataStringArr[i] = i + "";
             Log.i(TAG, "## onBindViewHolder dataStringArr:" + dataStringArr[i]);

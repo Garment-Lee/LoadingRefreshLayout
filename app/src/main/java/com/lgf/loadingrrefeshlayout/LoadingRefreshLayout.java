@@ -14,7 +14,7 @@ import android.widget.TextView;
  * Created by garment on 2018/2/24.
  */
 
-public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchListener{
+public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchListener {
 
     /**下拉刷新状态*/
     private final int STATUS_PULL_TO_REFRESH = 0;
@@ -85,9 +85,10 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
                     return false;
                 }
                 if (currentStatus != STATUS_DOING_REFRESH){
-                    if (headMarginLayoutParams.topMargin > 0){
+                    if (headMarginLayoutParams.topMargin >= 0){
                         currentStatus = STATUS_RELEASE_TO_REFRESH;
                         statusTV.setText(R.string.release_to_refresh);
+                        return false;
                     } else {
                         currentStatus = STATUS_PULL_TO_REFRESH;
                         statusTV.setText(R.string.pull_to_refresh);
@@ -181,5 +182,6 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
 
     public interface OnRefreshListener{
         void onRefresh();
+        void onLoadMore();
     }
 }

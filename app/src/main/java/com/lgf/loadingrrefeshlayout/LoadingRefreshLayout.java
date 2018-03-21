@@ -1,5 +1,6 @@
 package com.lgf.loadingrrefeshlayout;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -18,29 +19,40 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
 
     /**下拉刷新状态*/
     private final int STATUS_PULL_TO_REFRESH = 0;
+
     /**松开刷新状态*/
     private final int STATUS_RELEASE_TO_REFRESH = 1;
+
     /**正在刷新状态*/
     private final int STATUS_DOING_REFRESH = 2;
+
     /**刷新完成状态*/
     private final int STATUS_FINISH_TO_REFRESH = 3;
 
     /**下拉头*/
     private View head;
+
     /**下拉头中状态提示*/
     private TextView statusTV;
+
     /**当前的下拉状态*/
     private int currentStatus;
+
     /**是否已经加载过head的标志*/
     private boolean hasLoaded = false;
-    /**head的隐藏高度*/
-    private int hideHeadHeight;
+
+    /**head的高度*/
+    private int headHeight;
+
     /**head的布局参数*/
     private MarginLayoutParams headMarginLayoutParams;
+
     /**是否允许下拉*/
     private boolean allowToPull = false;
+
     /**手指接触屏幕时Y坐标的位置*/
     private float downY;
+
     private OnRefreshListener onRefreshListener;
 
 
@@ -62,9 +74,9 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
         if (changed && !hasLoaded){
-            hideHeadHeight = -head.getHeight();
+            headHeight = head.getHeight();
             headMarginLayoutParams = (MarginLayoutParams) head.getLayoutParams();
-            headMarginLayoutParams.topMargin = hideHeadHeight;
+            headMarginLayoutParams.topMargin = - headHeight;
             recyclerView = (RecyclerView) getChildAt(1);
             recyclerView.setOnTouchListener(this);
             hasLoaded = true;
@@ -81,19 +93,23 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
             case MotionEvent.ACTION_MOVE:
                 float moveY = event.getRawY();
                 int distance = (int)(moveY - downY);
-                if (distance <= 0 && headMarginLayoutParams.topMargin <= hideHeadHeight){
+                if (distance <= 0 && headMarginLayoutParams.topMargin <= - headHeight || !allowToPull){
                     return false;
                 }
                 if (currentStatus != STATUS_DOING_REFRESH){
-                    if (headMarginLayoutParams.topMargin >= 0){
+                    if (headMarginLayoutParams.topMargin >= headHeight){
+                        return true;
+                    }
+                    if (headMarginLayoutParams.topMargin >= headHeight / 2){
+                        //切换到松开刷新状态
                         currentStatus = STATUS_RELEASE_TO_REFRESH;
                         statusTV.setText(R.string.release_to_refresh);
-                        return false;
                     } else {
+                        //依然是下来刷新状态
                         currentStatus = STATUS_PULL_TO_REFRESH;
                         statusTV.setText(R.string.pull_to_refresh);
                     }
-                    headMarginLayoutParams.topMargin = (distance/2 )+ hideHeadHeight;
+                    headMarginLayoutParams.topMargin = (distance/2 )+ -headHeight;
                     head.setLayoutParams(headMarginLayoutParams);
                 }
 
@@ -101,33 +117,14 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
             case MotionEvent.ACTION_UP:
             default:
                 if (currentStatus == STATUS_PULL_TO_REFRESH){
+                    //跳转到隐藏head状态
                     int topMargin = headMarginLayoutParams.topMargin;
-                    while (true){
-                        topMargin = topMargin - 20;
-                        if (topMargin > hideHeadHeight){
-                            headMarginLayoutParams.topMargin = topMargin;
-                            head.setLayoutParams(headMarginLayoutParams);
-                        } else {
-                            topMargin = hideHeadHeight;
-                            headMarginLayoutParams.topMargin = topMargin;
-                            head.setLayoutParams(headMarginLayoutParams);
-                            break;
-                        }
-                    }
+                    autoMoveAnimation(topMargin, -headHeight - topMargin);
+
                 } else if (currentStatus == STATUS_RELEASE_TO_REFRESH){
+                    //跳转到正在加载状态
                     int topMargin = headMarginLayoutParams.topMargin;
-                    while (true){
-                        topMargin = topMargin - 20;
-                        if (topMargin > 0){
-                            headMarginLayoutParams.topMargin = topMargin;
-                            head.setLayoutParams(headMarginLayoutParams);
-                        } else {
-                            topMargin = 0;
-                            headMarginLayoutParams.topMargin = topMargin;
-                            head.setLayoutParams(headMarginLayoutParams);
-                            break;
-                        }
-                    }
+                    autoMoveAnimation(topMargin, -topMargin);
                     currentStatus = STATUS_DOING_REFRESH;
                     statusTV.setText(R.string.doing_refresh);
                     if (onRefreshListener != null){
@@ -136,6 +133,20 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
                 }
         }
         return false;
+    }
+
+    private void autoMoveAnimation(final int initPosition, int offset){
+        ValueAnimator valueAnimator = ValueAnimator.ofInt(0, offset);
+        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                int delOffset = (int)animation.getAnimatedValue();
+                headMarginLayoutParams.topMargin = initPosition + delOffset;
+                head.setLayoutParams(headMarginLayoutParams);
+            }
+        });
+        valueAnimator.setDuration(500);
+        valueAnimator.start();
     }
 
     /**
@@ -164,24 +175,12 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
     public void finishLoading(){
         if (currentStatus == STATUS_DOING_REFRESH){
             int topMargin = headMarginLayoutParams.topMargin;
-            while (true){
-                topMargin = topMargin - 20;
-                if (topMargin > hideHeadHeight){
-                    headMarginLayoutParams.topMargin = topMargin;
-                    head.setLayoutParams(headMarginLayoutParams);
-                } else {
-                    topMargin = hideHeadHeight;
-                    headMarginLayoutParams.topMargin = topMargin;
-                    head.setLayoutParams(headMarginLayoutParams);
-                    break;
-                }
-            }
+            autoMoveAnimation(topMargin, -headHeight - topMargin);
             currentStatus = STATUS_FINISH_TO_REFRESH;
         }
     }
 
     public interface OnRefreshListener{
         void onRefresh();
-        void onLoadMore();
     }
 }

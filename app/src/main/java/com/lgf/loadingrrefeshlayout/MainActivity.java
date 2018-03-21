@@ -1,8 +1,8 @@
 package com.lgf.loadingrrefeshlayout;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -11,7 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LoadMoreAdapterWrapper.OnLoadMoreListener{
 
     private final String TAG = "MainActivity";
 
@@ -21,6 +21,8 @@ public class MainActivity extends AppCompatActivity {
     private LoadMoreAdapterWrapper loadMoreAdapterWrapper;
     private MyRecyclerViewAdapter mRecyclerViewAdapter;
     private int count = 0;
+
+    private Handler handler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,40 +38,22 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onRefresh() {
                 refreshData();
-                mLoadingRefreshLayout.finishLoading();
-                loadMoreAdapterWrapper.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onLoadMore() {
-
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        mLoadingRefreshLayout.finishLoading();
+                        loadMoreAdapterWrapper.notifyDataSetChanged();
+                    }
+                }, 2000);
             }
         });
         mDataRecyclerView = (RecyclerView) findViewById(R.id.rv_data_list);
         mDataRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mRecyclerViewAdapter = new MyRecyclerViewAdapter();
-        loadMoreAdapterWrapper = new LoadMoreAdapterWrapper(this, mRecyclerViewAdapter);
-        loadMoreAdapterWrapper.setOnLoadMoreListener(onLoadMoreListener);
+        loadMoreAdapterWrapper = new LoadMoreAdapterWrapper(mRecyclerViewAdapter);
+        loadMoreAdapterWrapper.setOnLoadMoreListener(this);
         mDataRecyclerView.setAdapter(loadMoreAdapterWrapper);
     }
-
-    LoadMoreAdapterWrapper.OnLoadMoreListener onLoadMoreListener = new LoadMoreAdapterWrapper.OnLoadMoreListener() {
-        @Override
-        public void onLoadMore() {
-            mDataRecyclerView.scrollToPosition(loadMoreAdapterWrapper.getItemCount() -1);
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    loadMoreAdapterWrapper.disableLoadMoreView();
-                }
-            }, 5000);
-        }
-
-        @Override
-        public void onRetry() {
-
-        }
-    };
 
     private void initData(){
         dataStringArr = new String[30];
@@ -87,12 +71,30 @@ public class MainActivity extends AppCompatActivity {
         count = count + 5;
     }
 
+    @Override
+    public void onLoadMore() {
+        loadMoreAdapterWrapper.showLoadMoreView();
+        mDataRecyclerView.scrollToPosition(loadMoreAdapterWrapper.getItemCount() -1);
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                loadMoreAdapterWrapper.disableLoadMoreView();
+            }
+        }, 5000);
+    }
+
+    @Override
+    public void onRetry() {
+
+    }
+
     private class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyRecyclerViewAdapter.MyViewHolder>{
 
         @Override
         public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             Log.i(TAG, "## onCreateViewHolder...");
-            View layout = LayoutInflater.from(parent.getContext()).inflate(R.layout.data_item_layout, null);
+            View layout = LayoutInflater.from(parent.getContext()).inflate(R.layout.data_item_layout, parent, false);
+//            View layout = LayoutInflater.from(parent.getContext()).inflate(R.layout.data_item_layout, null);
             MyViewHolder myViewHolder = new MyViewHolder(layout);
             return myViewHolder;
         }

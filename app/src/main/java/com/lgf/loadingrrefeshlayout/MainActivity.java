@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements LoadMoreAdapterWr
             public void run() {
                 loadMoreAdapterWrapper.showLoadFailedView();
             }
-        }, 5000);
+        }, 3000);
     }
 
     @Override
@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements LoadMoreAdapterWr
             public void run() {
                 loadMoreAdapterWrapper.showNoMoreView();
             }
-        }, 5000);
+        }, 3000);
     }
 
     @Override

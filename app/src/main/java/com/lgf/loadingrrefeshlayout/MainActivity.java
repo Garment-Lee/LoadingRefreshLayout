@@ -11,7 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-public class MainActivity extends AppCompatActivity implements LoadMoreAdapterWrapper.OnLoadMoreListener{
+public class MainActivity extends AppCompatActivity implements LoadMoreAdapterWrapper.OnLoadMoreListener, IInterceptChecker, LoadingRefreshLayout.OnRefreshListener{
 
     private final String TAG = "MainActivity";
 
@@ -34,19 +34,8 @@ public class MainActivity extends AppCompatActivity implements LoadMoreAdapterWr
 
     private void initViews(){
         mLoadingRefreshLayout =(LoadingRefreshLayout) findViewById(R.id.rl_data_list_layout);
-        mLoadingRefreshLayout.setOnRefreshListener(new LoadingRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                refreshData();
-                handler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        mLoadingRefreshLayout.finishLoading();
-                        loadMoreAdapterWrapper.notifyDataSetChanged();
-                    }
-                }, 2000);
-            }
-        });
+        mLoadingRefreshLayout.setOnRefreshListener(this);
+        mLoadingRefreshLayout.setInterceptChecker(this);
         mDataRecyclerView = (RecyclerView) findViewById(R.id.rv_data_list);
         mDataRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mRecyclerViewAdapter = new MyRecyclerViewAdapter();
@@ -78,14 +67,51 @@ public class MainActivity extends AppCompatActivity implements LoadMoreAdapterWr
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                loadMoreAdapterWrapper.disableLoadMoreView();
+                loadMoreAdapterWrapper.showLoadFailedView();
             }
         }, 5000);
     }
 
     @Override
     public void onRetry() {
+        loadMoreAdapterWrapper.showLoadMoreView();
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                loadMoreAdapterWrapper.showNoMoreView();
+            }
+        }, 5000);
+    }
 
+    @Override
+    public boolean isAllowToIntercept() {
+        boolean allowToPull = false;
+        View firstChild = mDataRecyclerView.getChildAt(0);
+        if (firstChild != null) {
+            RecyclerView.LayoutManager layoutManager = mDataRecyclerView.getLayoutManager();
+            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) layoutManager;
+            int firstVisiblePosition = linearLayoutManager.findFirstVisibleItemPosition();
+            if (firstVisiblePosition == 0 && firstChild.getTop() == 0) {
+                allowToPull = true;
+            } else {
+                allowToPull = false;
+            }
+        } else {
+            allowToPull = true;
+        }
+        return allowToPull;
+    }
+
+    @Override
+    public void onRefresh() {
+        refreshData();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                mLoadingRefreshLayout.finishLoading();
+                loadMoreAdapterWrapper.notifyDataSetChanged();
+            }
+        }, 2000);
     }
 
     private class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyRecyclerViewAdapter.MyViewHolder>{
@@ -94,7 +120,6 @@ public class MainActivity extends AppCompatActivity implements LoadMoreAdapterWr
         public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             Log.i(TAG, "## onCreateViewHolder...");
             View layout = LayoutInflater.from(parent.getContext()).inflate(R.layout.data_item_layout, parent, false);
-//            View layout = LayoutInflater.from(parent.getContext()).inflate(R.layout.data_item_layout, null);
             MyViewHolder myViewHolder = new MyViewHolder(layout);
             return myViewHolder;
         }

@@ -138,6 +138,7 @@ public class LoadMoreAdapterWrapper extends RecyclerView.Adapter<RecyclerView.Vi
 
     @Override
     public int getItemViewType(int position) {
+        //判断最后一个Item是否需要加载状态显示
         if (position == getItemCount() - 1 && hasStatusView){
             return currentViewType;
         }

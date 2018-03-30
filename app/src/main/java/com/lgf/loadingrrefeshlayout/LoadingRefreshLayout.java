@@ -2,9 +2,8 @@ package com.lgf.loadingrrefeshlayout;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -15,55 +14,80 @@ import android.widget.TextView;
  * Created by garment on 2018/2/24.
  */
 
-public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchListener {
+public class LoadingRefreshLayout extends LinearLayout {
 
-    /**下拉刷新状态*/
+    private static final String TAG = "LoadingRefreshLayout";
+
+    /**
+     * 下拉刷新状态
+     */
     private final int STATUS_PULL_TO_REFRESH = 0;
 
-    /**松开刷新状态*/
+    /**
+     * 松开刷新状态
+     */
     private final int STATUS_RELEASE_TO_REFRESH = 1;
 
-    /**正在刷新状态*/
+    /**
+     * 正在刷新状态
+     */
     private final int STATUS_DOING_REFRESH = 2;
 
-    /**刷新完成状态*/
+    /**
+     * 刷新完成状态
+     */
     private final int STATUS_FINISH_TO_REFRESH = 3;
 
-    /**下拉头*/
+    /**
+     * 下拉头
+     */
     private View head;
 
-    /**下拉头中状态提示*/
+    /**
+     * 下拉头中状态提示
+     */
     private TextView statusTV;
 
-    /**当前的下拉状态*/
+    /**
+     * 当前的下拉状态
+     */
     private int currentStatus;
 
-    /**是否已经加载过head的标志*/
+    /**
+     * 是否已经加载过head的标志
+     */
     private boolean hasLoaded = false;
 
-    /**head的高度*/
+    /**
+     * head的高度
+     */
     private int headHeight;
 
-    /**head的布局参数*/
+    /**
+     * head的布局参数
+     */
     private MarginLayoutParams headMarginLayoutParams;
 
-    /**是否允许下拉*/
-    private boolean allowToPull = false;
-
-    /**手指接触屏幕时Y坐标的位置*/
-    private float downY;
-
+    /**
+     * 下拉刷新回调
+     */
     private OnRefreshListener onRefreshListener;
 
+    private IInterceptChecker interceptChecker;
 
-    private RecyclerView recyclerView;
+    /**
+     *
+     */
+    private float interceptY;
+
+
 
     public LoadingRefreshLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
         init(context);
     }
 
-    private void init(Context context){
+    private void init(Context context) {
         head = LayoutInflater.from(context).inflate(R.layout.loading_head_layout, null, true);
         statusTV = (TextView) head.findViewById(R.id.tv_loading_head);
         setOrientation(VERTICAL);
@@ -73,34 +97,51 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
-        if (changed && !hasLoaded){
+        if (changed && !hasLoaded) {
             headHeight = head.getHeight();
             headMarginLayoutParams = (MarginLayoutParams) head.getLayoutParams();
-            headMarginLayoutParams.topMargin = - headHeight;
-            recyclerView = (RecyclerView) getChildAt(1);
-            recyclerView.setOnTouchListener(this);
+            headMarginLayoutParams.topMargin = -headHeight;
             hasLoaded = true;
         }
     }
 
     @Override
-    public boolean onTouch(View v, MotionEvent event) {
-        setIsAbleToPull();
-        switch (event.getAction()){
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+
+        switch (ev.getAction()) {
+
             case MotionEvent.ACTION_DOWN:
-                downY = event.getRawY();
+                interceptY = ev.getRawY();
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                float delY = ev.getRawY() - interceptY;
+                if (delY > 0 && isAllowToIntercept()) {
+                    //拦截之后，把当前的位置点的Y坐标的值记录下来，供onTouchEvent()中使用
+                    interceptY = ev.getRawY();
+                    return true;
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+
+                break;
+        }
+        return super.onInterceptTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
                 break;
             case MotionEvent.ACTION_MOVE:
                 float moveY = event.getRawY();
-                int distance = (int)(moveY - downY);
-                if (distance <= 0 && headMarginLayoutParams.topMargin <= - headHeight || !allowToPull){
-                    return false;
-                }
-                if (currentStatus != STATUS_DOING_REFRESH){
-                    if (headMarginLayoutParams.topMargin >= headHeight){
-                        return true;
-                    }
-                    if (headMarginLayoutParams.topMargin >= headHeight / 2){
+                //使用拦截之后的位置点的Y坐标
+                int delY = (int) (moveY - interceptY);
+
+                if (headMarginLayoutParams.topMargin >= -headHeight && currentStatus != STATUS_DOING_REFRESH && isAllowToIntercept()) {
+                    if (headMarginLayoutParams.topMargin >= 0) {
                         //切换到松开刷新状态
                         currentStatus = STATUS_RELEASE_TO_REFRESH;
                         statusTV.setText(R.string.release_to_refresh);
@@ -109,38 +150,48 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
                         currentStatus = STATUS_PULL_TO_REFRESH;
                         statusTV.setText(R.string.pull_to_refresh);
                     }
-                    headMarginLayoutParams.topMargin = (distance/2 )+ -headHeight;
+                    //增加的大小为手指移动位移的一半
+                    headMarginLayoutParams.topMargin = headMarginLayoutParams.topMargin + delY / 2;
+                    Log.i(TAG, "onTouchEvent delY/2:" + delY / 2);
+                    //对超越边界值进行修正
+                    if (headMarginLayoutParams.topMargin < -headHeight) {
+                        headMarginLayoutParams.topMargin = -headHeight;
+                    }
+
                     head.setLayoutParams(headMarginLayoutParams);
                 }
+
+                interceptY = moveY;
 
                 break;
             case MotionEvent.ACTION_UP:
             default:
-                if (currentStatus == STATUS_PULL_TO_REFRESH){
+                //松开手之后
+                if (currentStatus == STATUS_PULL_TO_REFRESH) {
                     //跳转到隐藏head状态
                     int topMargin = headMarginLayoutParams.topMargin;
                     autoMoveAnimation(topMargin, -headHeight - topMargin);
 
-                } else if (currentStatus == STATUS_RELEASE_TO_REFRESH){
+                } else if (currentStatus == STATUS_RELEASE_TO_REFRESH) {
                     //跳转到正在加载状态
                     int topMargin = headMarginLayoutParams.topMargin;
                     autoMoveAnimation(topMargin, -topMargin);
                     currentStatus = STATUS_DOING_REFRESH;
                     statusTV.setText(R.string.doing_refresh);
-                    if (onRefreshListener != null){
+                    if (onRefreshListener != null) {
                         onRefreshListener.onRefresh();
                     }
                 }
         }
-        return false;
+        return super.onTouchEvent(event);
     }
 
-    private void autoMoveAnimation(final int initPosition, int offset){
+    private void autoMoveAnimation(final int initPosition, int offset) {
         ValueAnimator valueAnimator = ValueAnimator.ofInt(0, offset);
         valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                int delOffset = (int)animation.getAnimatedValue();
+                int delOffset = (int) animation.getAnimatedValue();
                 headMarginLayoutParams.topMargin = initPosition + delOffset;
                 head.setLayoutParams(headMarginLayoutParams);
             }
@@ -150,37 +201,33 @@ public class LoadingRefreshLayout extends LinearLayout implements View.OnTouchLi
     }
 
     /**
-     * 设置是否允许下拉
+     * 设置是否允许拦截事件
      */
-    private void setIsAbleToPull(){
-        View firstChild = recyclerView.getChildAt(0);
-        if (firstChild != null){
-            RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
-            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) layoutManager;
-            int firstVisiblePosition = linearLayoutManager.findFirstVisibleItemPosition();
-            if (firstVisiblePosition == 0 && firstChild.getTop() == 0){
-                allowToPull = true;
-            } else {
-                allowToPull = false;
-            }
-        } else {
-            allowToPull = true;
+    private boolean isAllowToIntercept() {
+        boolean allowToPull = false;
+        if (interceptChecker != null){
+            return interceptChecker.isAllowToIntercept();
         }
+        return allowToPull;
     }
 
-    public void setOnRefreshListener(OnRefreshListener onRefreshListener){
+    public void setOnRefreshListener(OnRefreshListener onRefreshListener) {
         this.onRefreshListener = onRefreshListener;
     }
 
-    public void finishLoading(){
-        if (currentStatus == STATUS_DOING_REFRESH){
+    public void finishLoading() {
+        if (currentStatus == STATUS_DOING_REFRESH) {
             int topMargin = headMarginLayoutParams.topMargin;
             autoMoveAnimation(topMargin, -headHeight - topMargin);
             currentStatus = STATUS_FINISH_TO_REFRESH;
         }
     }
 
-    public interface OnRefreshListener{
+    public void setInterceptChecker(IInterceptChecker interceptChecker){
+        this.interceptChecker = interceptChecker;
+    }
+
+    public interface OnRefreshListener {
         void onRefresh();
     }
 }

@@ -71,7 +71,7 @@
 ```
 #### activity中使用
 
-##### 实现拦截接口，判断拦截的条件
+	实现拦截接口，判断拦截的条件
 ``` java
    @Override
     public boolean isAllowToIntercept() {
@@ -94,13 +94,13 @@
 
 ```
 
-##### 设置事件拦截条件判断器
+	设置事件拦截条件判断器
 ``` java
   mLoadingRefreshLayout.setInterceptChecker(this);
 
 ```
 
-##### 实现刷新的回调接口，执行刷新动作
+	实现刷新的回调接口，执行刷新动作
 ``` java
     @Override
     public void onRefresh() {
@@ -116,7 +116,7 @@
 
 ```
 
-##### 设置回调监听器
+	设置回调监听器
 ``` java
 mLoadingRefreshLayout.setOnRefreshListener(this);
 

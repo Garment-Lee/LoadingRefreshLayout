@@ -4,7 +4,6 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -73,10 +72,13 @@ public class LoadingRefreshLayout extends LinearLayout {
      */
     private OnRefreshListener onRefreshListener;
 
+    /**
+     * 拦截事件检测器
+     */
     private IInterceptChecker interceptChecker;
 
     /**
-     *
+     * 记录触摸事件y方向的大小
      */
     private float interceptY;
 
@@ -84,23 +86,23 @@ public class LoadingRefreshLayout extends LinearLayout {
 
     public LoadingRefreshLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init(context);
-    }
-
-    private void init(Context context) {
-        head = LayoutInflater.from(context).inflate(R.layout.loading_head_layout, null, true);
-        statusTV = (TextView) head.findViewById(R.id.tv_loading_head);
-        setOrientation(VERTICAL);
-        addView(head, 0);
     }
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
         if (changed && !hasLoaded) {
+            head = getChildAt(0);
+
+            statusTV = (TextView) head.findViewById(R.id.tv_loading_head);
+
+            setOrientation(VERTICAL);
             headHeight = head.getHeight();
+            head.getY();
+
             headMarginLayoutParams = (MarginLayoutParams) head.getLayoutParams();
-            headMarginLayoutParams.topMargin = -headHeight;
+            //head的初始位置，距离parent view 大小为-headHeight。
+            headMarginLayoutParams.topMargin = - headHeight;
             hasLoaded = true;
         }
     }

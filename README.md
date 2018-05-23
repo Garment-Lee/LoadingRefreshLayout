@@ -38,9 +38,13 @@
 	*  正在加载状态：松手之后，topMargin的大小等于0，直至加载完毕。
   
 	*  加载完成：topMargin的大小变为-HeadHeight。
+	
+![](https://github.com/Garment-Lee/LoadingRefreshLayout/raw/master/img/loadrefreshLayout.png)  
+
 
 
 ## 效果图
+![](https://github.com/Garment-Lee/LoadingRefreshLayout/raw/master/img/LoadRefreshLayout-refresh.gif)  
 
 
 ## 用法
@@ -150,6 +154,7 @@ RecyclerView上拉到底自动加载更多的效果
 
 
 ## 效果图
+![](https://github.com/Garment-Lee/LoadingRefreshLayout/raw/master/img/LoadRefreshLayout-loadmore5.gif)  
 
 
 ## 用法

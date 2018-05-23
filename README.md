@@ -16,8 +16,9 @@
 
 
 	1. 实现View的移动方法有很多种，因为移动的View位于布局的最顶部，可以通过MarginLayoutParams的topMargin属性，
-    实现顶部View的移动。下移时，增大该值，上移时减少该值。
-    
+	实现顶部View的移动。下移时，增大该值，上移时减少该值。获取headView的topMargin属性，该属性表示的是该headView
+	距离父布局的顶部的距离，可以设置为headView的高度的负值，这样headView就会隐藏在父布局的上面，这个状态作为初始状态。
+    
 	2. LoadingRefreshLayout与嵌套的View可能会存在滑动的冲突，在需要下拉或者上移的时候，拦截滑动事件，
     重写onInterceptOnTouchEvent()方法，在判断需要拦截时，返回true，在onTouchEvent()方法中实现顶部HeadView的移动操作。
     
@@ -63,6 +64,11 @@
         android:id="@+id/rl_data_list_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+	
+	<include
+            layout="@layout/loading_head_layout">
+        </include>
+	
         <android.support.v7.widget.RecyclerView
             android:id="@+id/rv_data_list"
             android:layout_width="match_parent"
@@ -77,6 +83,13 @@
 
 	实现拦截接口，判断拦截的条件
 ``` java
+
+public interface IInterceptChecker {
+
+    boolean isAllowToIntercept();
+
+}
+
    @Override
     public boolean isAllowToIntercept() {
         boolean allowToPull = false;
@@ -106,6 +119,11 @@
 
 	实现刷新的回调接口，执行刷新动作
 ``` java
+
+   public interface OnRefreshListener {
+        void onRefresh();
+    }
+
     @Override
     public void onRefresh() {
         refreshData();
